@@ -1,0 +1,38 @@
+from keras.models import Sequential
+from keras import layers
+from keras.preprocessing.text import Tokenizer
+import pandas as pd
+from sklearn import preprocessing
+from sklearn.model_selection import train_test_split
+from keras.layers.embeddings import Embedding
+from keras.preprocessing.sequence import pad_sequences
+
+df = pd.read_csv('imdb_master.csv', encoding='latin-1')
+print(df.head())
+sentences = df['review'].values
+maxWords = max([len(s.split()) for s in sentences])  # Calculating the maximum words in a sentence.
+y = df['label'].values
+
+# Tokenizing data.
+tokenizer = Tokenizer(num_words=maxWords)
+tokenizer.fit_on_texts(sentences)
+
+# Getting the vocabulary of data.
+sentences = tokenizer.texts_to_matrix(sentences)
+vocab_size = len(tokenizer.word_index) + 1
+padded_docs = pad_sequences(sentences, maxlen=maxWords)
+
+# Converting the target into numerical format.
+labelEncoder = preprocessing.LabelEncoder()
+y = labelEncoder.fit_transform(y)
+# Splitting data into testing and training.
+X_train, X_test, y_train, y_test = train_test_split(padded_docs, y, test_size=0.25, random_state=1000)
+
+# Defining the model
+model = Sequential()
+model.add(Embedding(vocab_size, 32, input_length=maxWords))  # Adding embedding layer to see if there are any improvements.
+model.add(layers.Flatten())
+model.add(layers.Dense(300, activation='relu'))
+model.add(layers.Dense(3, activation='softmax'))
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['acc'])
+history = model.fit(X_train, y_train, epochs=5, verbose=True, validation_data=(X_test, y_test), batch_size=256)
